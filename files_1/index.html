@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akinator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0118;
+    font-family: 'Raleway', sans-serif;
+    color: #f0e6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--d) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    from { opacity: var(--min); transform: scale(1); }
+    to   { opacity: var(--max); transform: scale(1.4); }
+  }
+
+  .nebula { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+  .nebula-1 { width: 500px; height: 500px; background: rgba(100,0,180,0.18); top:-100px; left:-100px; }
+  .nebula-2 { width: 400px; height: 400px; background: rgba(0,80,180,0.12); bottom:-80px; right:-80px; }
+  .nebula-3 { width: 300px; height: 300px; background: rgba(180,0,100,0.1); top:40%; left:60%; }
+
+  .game-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .genie-container { width: 160px; height: 200px; position: relative; margin-bottom: 10px; }
+  .genie-svg { width: 100%; height: 100%; }
+  @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
+  @keyframes smokeWiggle { 0%,100% { transform: scaleX(1); } 50% { transform: scaleX(1.08); } }
+  .genie-float { animation: float 3s ease-in-out infinite; transform-origin: center bottom; }
+  .genie-smoke { animation: smokeWiggle 2s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes eyeGlow { 0%,100% { opacity: 0.8; } 50% { opacity: 1; } }
+  .genie-eye { animation: eyeGlow 2.5s ease-in-out infinite; }
+  @keyframes orbPulse { 0%,100% { r: 6; opacity: 0.7; } 50% { r: 8; opacity: 1; } }
+  .genie-orb { animation: orbPulse 2s ease-in-out infinite; }
+
+  .game-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, #d4a8ff 0%, #f0c060 50%, #a060ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .game-subtitle {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.85rem;
+    color: #a090c0;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(180,140,255,0.2);
+    border-radius: 20px;
+    padding: 32px 36px;
+    width: 100%;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 0 40px rgba(120,60,200,0.15), inset 0 0 40px rgba(255,255,255,0.01);
+  }
+
+  .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
+  .screen.active { display: flex; }
+
+  .start-text {
+    text-align: center;
+    font-size: 1rem;
+    color: #c0a8e8;
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+
+  .progress-bar-wrap { width: 100%; height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #8040d0, #d4a060); border-radius: 2px; transition: width 0.5s ease; }
+  .question-counter { font-size: 0.72rem; color: #7060a0; letter-spacing: 0.15em; text-transform: uppercase; align-self: flex-end; margin-top: -12px; }
+
+  .question-box {
+    width: 100%;
+    min-height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(180,140,255,0.12);
+    border-radius: 14px;
+  }
+  .question-text { font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 400; color: #e8d8ff; line-height: 1.5; }
+
+  .thinking-dots span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: #8060c0;
+    border-radius: 50%;
+    margin: 0 3px;
+    animation: dot-bounce 1.2s ease-in-out infinite;
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot-bounce {
+    0%,80%,100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-8px); opacity: 1; }
+  }
+
+  .answer-buttons { display: flex; gap: 12px; width: 100%; justify-content: center; }
+
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 14px 28px;
+    border-radius: 12px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::after { content: ''; position: absolute; inset: 0; background: white; opacity: 0; transition: opacity 0.15s; }
+  .btn:active::after { opacity: 0.08; }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-yes { background: rgba(60,180,80,0.12); border-color: rgba(60,180,80,0.4); color: #80e880; flex: 1; }
+  .btn-yes:hover { background: rgba(60,180,80,0.22); border-color: rgba(60,180,80,0.7); }
+
+  .btn-no { background: rgba(220,60,60,0.12); border-color: rgba(220,60,60,0.4); color: #f08080; flex: 1; }
+  .btn-no:hover { background: rgba(220,60,60,0.22); border-color: rgba(220,60,60,0.7); }
+
+  .btn-dk { background: rgba(140,120,200,0.12); border-color: rgba(140,120,200,0.35); color: #b0a0e0; flex: 1; }
+  .btn-dk:hover { background: rgba(140,120,200,0.22); border-color: rgba(140,120,200,0.6); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, rgba(120,60,200,0.6), rgba(180,100,60,0.4));
+    border-color: rgba(200,160,100,0.5);
+    color: #f0d090;
+    padding: 16px 48px;
+    font-size: 1rem;
+    width: 100%;
+  }
+  .btn-primary:hover { background: linear-gradient(135deg, rgba(120,60,200,0.8), rgba(180,100,60,0.6)); border-color: rgba(200,160,100,0.8); }
+
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+  .guess-bubble {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(120,60,200,0.4), rgba(60,0,120,0.6));
+    border: 2px solid rgba(180,140,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem;
+    animation: float 3s ease-in-out infinite;
+    box-shadow: 0 0 40px rgba(120,60,200,0.3);
+  }
+  .guess-label { font-family: 'Cinzel', serif; font-size: 0.8rem; color: #7060a0; letter-spacing: 0.2em; text-transform: uppercase; }
+  .guess-name { font-family: 'Cinzel', serif; font-size: 2rem; font-weight: 700; color: #e8c070; text-align: center; text-shadow: 0 0 20px rgba(232,192,112,0.4); }
+  .guess-confidence { font-size: 0.85rem; color: #9080b0; text-align: center; font-style: italic; max-width: 380px; }
+  .result-buttons { display: flex; gap: 14px; width: 100%; }
+
+  .history-toggle { font-size: 0.72rem; color: #604080; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; margin-top: -8px; transition: color 0.2s; }
+  .history-toggle:hover { color: #9070c0; }
+  .history-list { width: 100%; max-height: 180px; overflow-y: auto; display: none; flex-direction: column; gap: 6px; }
+  .history-list.open { display: flex; }
+  .history-item { display: flex; gap: 10px; font-size: 0.8rem; color: #8070a0; align-items: flex-start; }
+  .history-q { flex: 1; color: #9080b0; }
+  .history-a { font-weight: 600; min-width: 70px; text-align: right; }
+  .history-a.yes { color: #80d880; }
+  .history-a.no  { color: #e08080; }
+  .history-a.dk  { color: #a090d0; }
+
+  .error-msg { font-size: 0.8rem; color: #e08080; text-align: center; background: rgba(220,60,60,0.08); border: 1px solid rgba(220,60,60,0.2); border-radius: 8px; padding: 10px 16px; width: 100%; }
+
+  .confetti-piece {
+    position: fixed; width: 8px; height: 8px; border-radius: 2px;
+    pointer-events: none; z-index: 999;
+    animation: confetti-fall var(--dur) ease-in forwards;
+  }
+  @keyframes confetti-fall {
+    0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  .api-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(180,140,255,0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #f0e6ff;
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .api-input:focus { border-color: rgba(180,140,255,0.6); }
+  .api-input::placeholder { color: #504060; }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<div class="nebula nebula-1"></div>
+<div class="nebula nebula-2"></div>
+<div class="nebula nebula-3"></div>
+
+<div class="game-wrapper">
+  <div class="genie-container">
+    <svg class="genie-svg" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
+      <g class="genie-smoke">
+        <ellipse cx="80" cy="188" rx="28" ry="10" fill="#2a0a5a" opacity="0.7"/>
+        <ellipse cx="80" cy="178" rx="22" ry="9" fill="#3a1070" opacity="0.6"/>
+        <ellipse cx="82" cy="168" rx="18" ry="8" fill="#4a1888" opacity="0.55"/>
+        <ellipse cx="79" cy="158" rx="15" ry="7" fill="#5a20a0" opacity="0.5"/>
+        <ellipse cx="81" cy="149" rx="12" ry="6" fill="#6028b8" opacity="0.45"/>
+      </g>
+      <g class="genie-float">
+        <ellipse cx="80" cy="118" rx="34" ry="38" fill="#4a1890"/>
+        <ellipse cx="80" cy="118" rx="30" ry="34" fill="#5a22a8"/>
+        <ellipse cx="70" cy="100" rx="8" ry="18" fill="#6a32b8" opacity="0.5"/>
+        <rect x="52" y="118" width="56" height="8" rx="4" fill="#c08020"/>
+        <circle cx="80" cy="122" r="5" fill="#e0a030"/>
+        <ellipse cx="80" cy="105" rx="6" ry="8" fill="#20a0d0"/>
+        <ellipse cx="80" cy="104" rx="3" ry="4" fill="#80e0ff" opacity="0.7"/>
+        <path d="M48 108 Q28 115 24 128 Q22 138 32 142 Q38 144 42 138 Q44 130 54 124" fill="#c87040" stroke="#a05030" stroke-width="1"/>
+        <path d="M112 108 Q132 115 136 128 Q138 138 128 142 Q122 144 118 138 Q116 130 106 124" fill="#c87040" stroke="#a05030" stroke-width="1"/>
+        <circle cx="28" cy="140" r="8" fill="#c87040"/>
+        <circle cx="132" cy="140" r="8" fill="#c87040"/>
+        <circle class="genie-orb" cx="132" cy="140" r="6" fill="#60a0ff" opacity="0.8"/>
+        <circle cx="134" cy="138" r="2" fill="white" opacity="0.6"/>
+        <rect x="72" y="72" width="16" height="14" rx="4" fill="#c87040"/>
+        <ellipse cx="80" cy="62" rx="32" ry="34" fill="#c87040"/>
+        <ellipse cx="48" cy="62" rx="7" ry="9" fill="#c87040"/>
+        <ellipse cx="112" cy="62" rx="7" ry="9" fill="#c87040"/>
+        <ellipse cx="48" cy="62" rx="4" ry="6" fill="#b06030" opacity="0.4"/>
+        <ellipse cx="112" cy="62" rx="4" ry="6" fill="#b06030" opacity="0.4"/>
+        <circle cx="48" cy="69" r="3" fill="#e0a030"/>
+        <circle cx="112" cy="69" r="3" fill="#e0a030"/>
+        <ellipse cx="80" cy="34" rx="34" ry="14" fill="#8020c0"/>
+        <ellipse cx="80" cy="30" rx="30" ry="12" fill="#9030d8"/>
+        <ellipse cx="80" cy="26" rx="24" ry="9" fill="#a040e8"/>
+        <ellipse cx="80" cy="22" rx="7" ry="5" fill="#ff6040"/>
+        <ellipse cx="80" cy="21" rx="3" ry="2" fill="#ffb090" opacity="0.8"/>
+        <path d="M80 17 Q72 5 68 -2 Q74 3 80 12 Q86 3 92 -2 Q88 5 80 17" fill="#e8c030"/>
+        <ellipse class="genie-eye" cx="66" cy="58" rx="7" ry="8" fill="white"/>
+        <ellipse class="genie-eye" cx="94" cy="58" rx="7" ry="8" fill="white"/>
+        <ellipse cx="67" cy="59" rx="4" ry="5" fill="#1a0a40"/>
+        <ellipse cx="95" cy="59" rx="4" ry="5" fill="#1a0a40"/>
+        <circle cx="68" cy="57" r="1.5" fill="white"/>
+        <circle cx="96" cy="57" r="1.5" fill="white"/>
+        <path d="M59 50 Q66 46 73 50" stroke="#5a1a20" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M87 50 Q94 46 101 50" stroke="#5a1a20" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="80" cy="66" rx="5" ry="4" fill="#b86030" opacity="0.5"/>
+        <circle cx="77" cy="67" r="2" fill="#a05028" opacity="0.6"/>
+        <circle cx="83" cy="67" r="2" fill="#a05028" opacity="0.6"/>
+        <path d="M68 76 Q80 84 92 76" stroke="#8a3820" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="58" cy="70" rx="8" ry="5" fill="#e06050" opacity="0.25"/>
+        <ellipse cx="102" cy="70" rx="8" ry="5" fill="#e06050" opacity="0.25"/>
+        <g opacity="0.7">
+          <path d="M18 80 L20 74 L22 80 L28 82 L22 84 L20 90 L18 84 L12 82 Z" fill="#e0d060"/>
+          <path d="M138 60 L140 55 L142 60 L147 62 L142 64 L140 69 L138 64 L133 62 Z" fill="#60d0ff"/>
+          <path d="M10 50 L11 47 L12 50 L15 51 L12 52 L11 55 L10 52 L7 51 Z" fill="#d060e0" opacity="0.8"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <h1 class="game-title">AKINATOR</h1>
+  <p class="game-subtitle">The All-Knowing Genie</p>
+
+  <div class="card">
+
+    <!-- START SCREEN -->
+    <div class="screen active" id="screen-start">
+      <p class="start-text">
+        Think of someone I know...<br>
+        <span style="font-size:0.85rem; color:#7060a0;">I will read your mind.</span>
+      </p>
+      <button class="btn btn-primary" onclick="startGame()">✦ Begin ✦</button>
+      <div id="start-error"></div>
+    </div>
+
+    <!-- QUESTION SCREEN -->
+    <div class="screen" id="screen-question">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <span class="question-counter" id="q-counter">Question 1 of 20</span>
+      <div class="question-box">
+        <div id="question-content">
+          <div class="thinking-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="answer-buttons">
+        <button class="btn btn-yes" id="btn-yes" onclick="answer('Yes')"         disabled>Yes</button>
+        <button class="btn btn-no"  id="btn-no"  onclick="answer('No')"          disabled>No</button>
+        <button class="btn btn-dk"  id="btn-dk"  onclick="answer('Don\'t Know')" disabled>Don't Know</button>
+      </div>
+      <div id="q-error"></div>
+      <span class="history-toggle" onclick="toggleHistory()">▾ Show answers so far</span>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+    <!-- GUESS SCREEN -->
+    <div class="screen" id="screen-guess">
+      <div class="guess-bubble">🔮</div>
+      <span class="guess-label">I believe you are thinking of...</span>
+      <div class="guess-name" id="guess-name">—</div>
+      <p class="guess-confidence" id="guess-reasoning"></p>
+      <div class="result-buttons">
+        <button class="btn btn-yes" style="flex:1" onclick="markCorrect()">✓ Correct!</button>
+        <button class="btn btn-no"  style="flex:1" onclick="markWrong()">✗ Wrong</button>
+      </div>
+    </div>
+
+    <!-- WRONG SCREEN -->
+    <div class="screen" id="screen-wrong">
+      <div style="font-size:2.5rem">😔</div>
+      <p style="font-family:'Cinzel',serif; font-size:1.1rem; color:#c0a8e0; text-align:center">
+        The genie was defeated...
+      </p>
+      <p style="font-size:0.85rem; color:#7060a0; text-align:center">Who were you thinking of?</p>
+      <input class="api-input" id="correct-person" placeholder="Their name..." style="text-align:center"/>
+      <button class="btn btn-primary" onclick="playAgain()">Play Again</button>
+    </div>
+
+    <!-- WIN SCREEN -->
+    <div class="screen" id="screen-win">
+      <div style="font-size:2.5rem">🎉</div>
+      <p style="font-family:'Cinzel',serif; font-size:1.2rem; color:#e8c070; text-align:center">
+        The genie sees all!
+      </p>
+      <p style="font-size:0.85rem; color:#9080b0; text-align:center">
+        Beaten in <span id="win-questions">0</span> questions.
+      </p>
+      <button class="btn btn-primary" onclick="playAgain()">Play Again</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PEOPLE = [
+  { name: "Fico Veljanovski",   about: "Male, teen, school friend, highly intelligent, loves blinking manually, often referred as the smartest man ever" },
+  { name: "Bob",     about: "Male, early 30s, coworker, very tall, into cars and motorsports, has a beard" },
+  { name: "Sarah",   about: "Female, early 40s, cousin, lives abroad, has two young kids, works as a teacher" },
+  { name: "Marcus",  about: "Male, late 20s, university friend, plays guitar in a band, loves craft beer, short hair" },
+  { name: "Elena",   about: "Female, mid 30s, neighbor, runs marathons, vegetarian, has twin girls" },
+  { name: "David",   about: "Male, 50s, uncle, retired engineer, loves chess and fishing, drives a truck" },
+  { name: "Priya",   about: "Female, late 20s, coworker, software developer, loves anime and board games" },
+  { name: "Jake",    about: "Male, early 20s, younger brother of a friend, university student, gamer, skateboards" },
+];
+
+const BACKEND_URL = 'http://localhost:3000/api/ask';
+
+let history = [];
+let questionCount = 0;
+const MAX_QUESTIONS = 20;
+const GUESS_AFTER   = 12;
+
+(function generateStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 160; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--d:${(Math.random()*3+1.5).toFixed(1)}s;--min:${(Math.random()*0.2+0.05).toFixed(2)};--max:${(Math.random()*0.5+0.4).toFixed(2)};animation-delay:${(Math.random()*4).toFixed(1)}s;`;
+    container.appendChild(s);
+  }
+})();
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function startGame() {
+  history = [];
+  questionCount = 0;
+  document.getElementById('start-error').innerHTML = '';
+  showScreen('question');
+  askNextQuestion();
+}
+
+function setButtons(enabled) {
+  ['btn-yes','btn-no','btn-dk'].forEach(id => {
+    document.getElementById(id).disabled = !enabled;
+  });
+}
+
+async function callBackend(system, messages, max_tokens = 300) {
+  const response = await fetch(BACKEND_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, messages, max_tokens }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Server error');
+  return data.text;
+}
+
+async function askNextQuestion() {
+  setButtons(false);
+  document.getElementById('q-error').innerHTML = '';
+
+  const qContent = document.getElementById('question-content');
+  qContent.innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div>';
+
+  questionCount++;
+  updateProgress();
+
+  const peopleList = PEOPLE.map(p => `- ${p.name}: ${p.about}`).join('\n');
+  const historyStr = history.length
+    ? history.map((h, i) => `Q${i+1}: "${h.q}" → ${h.a}`).join('\n')
+    : 'No questions asked yet.';
+
+  const system = `You are the genie in an Akinator-style game. You are trying to guess which of these specific people the player is thinking of:
+
+${peopleList}
+
+Your job is to ask clever yes/no questions that eliminate the most candidates at once.
+Rules:
+- Ask ONE short yes/no question (max 12 words).
+- Never repeat a question already asked.
+- Do not mention any person's name in the question.
+- Focus on distinguishing traits: gender, age range, relationship to player, profession, hobbies, physical traits.
+- Respond with ONLY the question, nothing else. No preamble, no quotes.`;
+
+  const messages = [{ role: 'user', content: `Questions and answers so far:\n${historyStr}\n\nAsk the single best next question to narrow down the person.` }];
+
+  try {
+    const reply = await callBackend(system, messages);
+    const question = reply.trim().replace(/^["']|["']$/g, '');
+    qContent.innerHTML = `<span class="question-text">${question}</span>`;
+    setButtons(true);
+    window._currentQuestion = question;
+  } catch (e) {
+    qContent.innerHTML = '';
+    document.getElementById('q-error').innerHTML = `<div class="error-msg">${e.message}</div>`;
+  }
+}
+
+function answer(ans) {
+  if (!window._currentQuestion) return;
+  history.push({ q: window._currentQuestion, a: ans });
+  window._currentQuestion = null;
+  renderHistory();
+  if (questionCount >= GUESS_AFTER || questionCount >= MAX_QUESTIONS) {
+    makeGuess();
+  } else {
+    askNextQuestion();
+  }
+}
+
+async function makeGuess() {
+  setButtons(false);
+  const qContent = document.getElementById('question-content');
+  qContent.innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div>';
+  qContent.closest('.question-box').style.display = 'none';
+  document.querySelector('.answer-buttons').style.display = 'none';
+
+  const peopleList = PEOPLE.map(p => `- ${p.name}: ${p.about}`).join('\n');
+  const historyStr = history.map((h, i) => `Q${i+1}: "${h.q}" → ${h.a}`).join('\n');
+
+  const system = `You are the genie in an Akinator game. Based on the answers, guess which person from the list is being thought of.
+
+People:
+${peopleList}
+
+Respond in this exact format (two lines only):
+GUESS: [Name]
+REASON: [One short sentence explaining why, max 20 words]`;
+
+  const messages = [{ role: 'user', content: `Questions and answers:\n${historyStr}\n\nWho is it?` }];
+
+  try {
+    const reply = await callBackend(system, messages);
+    const guessMatch  = reply.match(/GUESS:\s*(.+)/i);
+    const reasonMatch = reply.match(/REASON:\s*(.+)/i);
+    document.getElementById('guess-name').textContent      = guessMatch  ? guessMatch[1].trim()  : '???';
+    document.getElementById('guess-reasoning').textContent = reasonMatch ? reasonMatch[1].trim() : '';
+    showScreen('guess');
+  } catch (e) {
+    qContent.closest('.question-box').style.display = 'flex';
+    document.querySelector('.answer-buttons').style.display = 'flex';
+    document.getElementById('q-error').innerHTML = `<div class="error-msg">${e.message}</div>`;
+    setButtons(true);
+  }
+}
+
+function markCorrect() {
+  document.getElementById('win-questions').textContent = questionCount;
+  showScreen('win');
+  launchConfetti();
+}
+
+function markWrong() { showScreen('wrong'); }
+
+function playAgain() {
+  history = [];
+  questionCount = 0;
+  window._currentQuestion = null;
+  document.querySelector('.question-box').style.display = 'flex';
+  document.querySelector('.answer-buttons').style.display = 'flex';
+  document.getElementById('history-list').innerHTML = '';
+  document.getElementById('history-list').classList.remove('open');
+  showScreen('question');
+  askNextQuestion();
+}
+
+function updateProgress() {
+  const pct = Math.min((questionCount / MAX_QUESTIONS) * 100, 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = `Question ${questionCount} of ${MAX_QUESTIONS}`;
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = history.map(h => {
+    const cls = h.a === 'Yes' ? 'yes' : h.a === 'No' ? 'no' : 'dk';
+    return `<div class="history-item"><span class="history-q">${h.q}</span><span class="history-a ${cls}">${h.a}</span></div>`;
+  }).join('');
+}
+
+function toggleHistory() {
+  const list = document.getElementById('history-list');
+  const toggle = document.querySelector('.history-toggle');
+  list.classList.toggle('open');
+  toggle.textContent = list.classList.contains('open') ? '▴ Hide answers' : '▾ Show answers so far';
+}
+
+function launchConfetti() {
+  const colors = ['#e0c030','#a060ff','#60d0ff','#ff6060','#60ff80','#ff80c0'];
+  for (let i = 0; i < 60; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti-piece';
+    c.style.cssText = `left:${Math.random()*100}vw;background:${colors[Math.floor(Math.random()*colors.length)]};--dur:${(Math.random()*1.5+1).toFixed(2)}s;animation-delay:${(Math.random()*0.8).toFixed(2)}s;border-radius:${Math.random()>0.5?'50%':'2px'};`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3000);
+  }
+}
+</script>
+</body>
+</html>
