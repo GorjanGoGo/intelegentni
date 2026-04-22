@@ -61,3 +61,5 @@ Decision Tree Construction
 8. Очекуван резултат
 <img width="640" height="427" alt="image1" src="https://github.com/user-attachments/assets/9b5b8313-b46e-40bb-a04a-caad13f4911f" />
 <img width="640" height="427" alt="image0" src="https://github.com/user-attachments/assets/0354780d-c6f2-43e4-8cad-3048f163812e" />
+
+denes na 22 4 2026 ke go popravame problemot so api key, ke pravime back end i ke uzivame u procesot
